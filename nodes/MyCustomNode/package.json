@@ -1,5 +1,0 @@
-{
-  "name": "my-custom-node",
-  "version": "1.0.0",
-  "main": "MyCustomNode.node.js"
-}
