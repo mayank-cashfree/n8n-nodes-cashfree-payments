@@ -1,9 +1,10 @@
 
 # n8n-nodes-cashfree-payments
 
+![Cashfree Payments](./nodes/CashfreePayments/Cashfree-Logo.png)
+
 Integrate [Cashfree Payments](https://www.cashfree.com/) seamlessly into your n8n workflows. **Trusted by 800,000+ businesses** across India and globally for payments, payouts, and financial automation.
 
-![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
 
 ## Features
 
