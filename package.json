@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-cashfree-payments",
+  "name": "@cashfreepayments/n8n-nodes-cashfree-payments",
   "version": "1.0.7",
   "description": "n8n community node for Cashfree Payments API integration - supports orders, payment links, refunds, and cashgrams",
   "keywords": [
@@ -13,23 +13,25 @@
     "cashgram",
     "india"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/cashfree/n8n-nodes-cashfree-payments",
   "author": {
     "name": "Cashfree Payments",
-    "email": "aditya.chauhan@cashfree.com"
+    "email": "support@cashfree.com",
+    "url": "https://www.cashfree.com"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/cashfree/n8n-nodes-cashfree-payments.git"
   },
   "engines": {
-    "node": ">=18.10"
+    "node": ">=20.0.0"
   },
   "main": "index.js",
   "scripts": {
     "build": "tsc && gulp build:post",
     "dev": "tsc --watch",
+    "type-check": "tsc --noEmit",
     "lint": "eslint nodes credentials --ext .ts",
     "prepublishOnly": "npm run build"
   },

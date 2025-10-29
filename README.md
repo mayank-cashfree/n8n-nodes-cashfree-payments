@@ -1,5 +1,4 @@
-
-# n8n-nodes-cashfree-payments
+# @cashfreepayments/n8n-nodes-cashfree-payments
 
 [//]: # (![Cashfree Payments]&#40;./nodes/CashfreePayments/Cashfree-Logo.png&#41;)
 
@@ -26,10 +25,17 @@ Integrate [Cashfree Payments](https://www.cashfree.com/) seamlessly into your n8
 ## Quick Start
 
 ### Installation
+
+#### Via n8n Community Nodes (Recommended)
 1. Go to **Settings > Community Nodes** in n8n
 2. Select **Install** 
-3. Enter `n8n-nodes-cashfree-payments`
+3. Enter `@cashfreepayments/n8n-nodes-cashfree-payments`
 4. Accept the community node risks and select **Install**
+
+#### Via npm
+```bash
+npm install @cashfreepayments/n8n-nodes-cashfree-payments
+```
 
 ### Credentials
 Get your credentials from the [Cashfree Dashboard](https://merchant.cashfree.com/):

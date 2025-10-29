@@ -1,0 +1,160 @@
+name: Publish n8n Package to npm
+
+on:
+    release:
+        types: [created]
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "20.x"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run TypeScript compilation
+              run: npx tsc --noEmit
+
+    build:
+        needs: test
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "20.x"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build package
+              run: npm run build
+
+            - name: Upload build artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: dist
+                  path: |
+                      dist/
+                      package.json
+                      README.md
+                      LICENSE.md
+                      gulpfile.js
+                      tsconfig.json
+
+    publish:
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            - name: Download build artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  name: dist
+                  path: ./
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "20.x"
+                  registry-url: "https://registry.npmjs.org"
+                  scope: "@cashfreepayments"
+
+            - name: Update package.json for official release
+              run: |
+                  node -e "
+                  const pkg = require('./package.json');
+                  pkg.name = '@cashfreepayments/n8n-nodes-cashfree-payments';
+                  pkg.repository.url = 'https://github.com/cashfree/n8n-nodes-cashfree-payments.git';
+                  pkg.homepage = 'https://github.com/cashfree/n8n-nodes-cashfree-payments';
+                  pkg.author = {
+                    name: 'Cashfree Payments',
+                    email: 'support@cashfree.com',
+                    url: 'https://www.cashfree.com'
+                  };
+                  require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));
+                  "
+
+            - name: Publish to npm
+              run: npm publish --access=public
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    publish-github-release:
+        needs: publish
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: "20.x"
+
+            - name: Get version from package.json
+              id: get_version
+              run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+            - name: Generate changelog
+              id: changelog
+              run: |
+                  PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+                  if [ -z "$PREVIOUS_TAG" ]; then
+                    echo "CHANGELOG=$(git log --pretty=format:"- %s (%h)" $(git rev-list --max-parents=0 HEAD)..HEAD)" >> $GITHUB_OUTPUT
+                  else
+                    echo "CHANGELOG=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD)" >> $GITHUB_OUTPUT
+                  fi
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: v${{ steps.get_version.outputs.VERSION }}
+                  name: Release v${{ steps.get_version.outputs.VERSION }}
+                  body: |
+                      ## Cashfree Payments n8n Node Release
+                      
+                      This release adds Cashfree Payments integration to n8n workflows with the following capabilities:
+                      
+                      ### Features
+                      - Payment Gateway operations (orders, payment links, refunds)
+                      - Payout operations (Cashgram)
+                      - Sandbox and Production environment support
+                      - Conditional credential configuration
+                      
+                      ### Changes in this version
+                      ${{ steps.changelog.outputs.CHANGELOG }}
+
+                      ## Installation
+                      
+                      ### Via n8n Community Nodes
+                      1. Go to **Settings** > **Community Nodes** in your n8n instance
+                      2. Click **Install a community node**
+                      3. Enter: `@cashfreepayments/n8n-nodes-cashfree-payments`
+                      4. Click **Install**
+                      
+                      ### Via npm
+                      ```bash
+                      npm install @cashfreepayments/n8n-nodes-cashfree-payments
+                      ```
+                      
+                      ## Documentation
+                      - [Cashfree API Documentation](https://docs.cashfree.com/)
+                      - [n8n Community Nodes Guide](https://docs.n8n.io/integrations/community-nodes/)
+                      
+                      ## Support
+                      For technical support, please visit [Cashfree Support](https://support.cashfree.com/)
+                  draft: false
+                  prerelease: false
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
