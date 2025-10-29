@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-cashfree-payments",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "description": "n8n community node for Cashfree Payments API integration - supports orders, payment links, refunds, and cashgrams",
   "keywords": [
     "n8n-community-node-package",
@@ -14,21 +14,23 @@
     "india"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/cashfree-tech/n8n-nodes-cashfree-payments",
+  "homepage": "https://github.com/cashfree/n8n-nodes-cashfree-payments",
   "author": {
     "name": "Cashfree Payments",
     "email": "aditya.chauhan@cashfree.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/cashfree-tech/n8n-nodes-cashfree-payments.git"
+    "url": "https://github.com/cashfree/n8n-nodes-cashfree-payments.git"
   },
   "engines": {
     "node": ">=18.10"
   },
   "main": "index.js",
   "scripts": {
-    "build": "gulp build",
+    "build": "tsc && gulp build:post",
+    "dev": "tsc --watch",
+    "lint": "eslint nodes credentials --ext .ts",
     "prepublishOnly": "npm run build"
   },
   "files": [
@@ -44,7 +46,9 @@
     ]
   },
   "devDependencies": {
-    "gulp": "^4.0.2"
+    "@types/node": "^18.15.0",
+    "gulp": "^4.0.2",
+    "typescript": "^5.0.0"
   },
   "peerDependencies": {
     "n8n-workflow": "*"

@@ -5,17 +5,11 @@ function buildIcons() {
 		.pipe(dest('dist/nodes/CashfreePayments/'));
 }
 
-function buildNodes() {
-	return src('nodes/**/*.js')
-		.pipe(dest('dist/nodes/'));
-}
-
-function buildCredentials() {
-	return src('credentials/**/*.js')
-		.pipe(dest('dist/credentials/'));
+function copyPackageFiles() {
+	return src(['package.json', 'LICENSE.md', 'README.md'])
+		.pipe(dest('dist/'));
 }
 
 exports['build:icons'] = buildIcons;
-exports['build:nodes'] = buildNodes;
-exports['build:credentials'] = buildCredentials;
-exports['build'] = parallel(buildIcons, buildNodes, buildCredentials);
+exports['build:copy'] = copyPackageFiles;
+exports['build:post'] = parallel(buildIcons, copyPackageFiles);
