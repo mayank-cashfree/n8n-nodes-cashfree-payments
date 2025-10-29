@@ -14,42 +14,24 @@ export class CashfreeApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Client ID',
-			name: 'clientId',
-			type: 'string',
-			default: '',
+			displayName: 'Operation Type',
+			name: 'operationType',
+			type: 'options',
+			options: [
+				{
+					name: 'Payment Gateway Operations',
+					value: 'paymentGateway',
+					description: 'For orders, payment links, refunds',
+				},
+				{
+					name: 'Payout Operations (Cashgram)',
+					value: 'payout',
+					description: 'For Cashgram and payout operations',
+				},
+			],
+			default: 'paymentGateway',
 			required: true,
-			description: 'Cashfree Payment Gateway Client ID (required for all operations)',
-		},
-		{
-			displayName: 'Client Secret',
-			name: 'clientSecret',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-			default: '',
-			required: true,
-			description: 'Cashfree Payment Gateway Client Secret (required for all operations)',
-		},
-		{
-			displayName: 'Payout Authorization Token',
-			name: 'payoutAuthToken',
-			type: 'string',
-			typeOptions: {
-				password: true,
-			},
-			default: '',
-			required: false,
-			description: 'Authorization token for Cashfree Payout API (only required for Cashgram operations)',
-		},
-		{
-			displayName: 'API Version',
-			name: 'apiVersion',
-			type: 'string',
-			default: '2025-01-01',
-			required: false,
-			description: 'API Version for Payment Gateway operations (uses default if not specified)',
+			description: 'Select the type of operations you want to perform',
 		},
 		{
 			displayName: 'Environment',
@@ -69,15 +51,74 @@ export class CashfreeApi implements ICredentialType {
 			required: true,
 			description: 'Environment to use for API calls',
 		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					operationType: ['paymentGateway'],
+				},
+			},
+			description: 'Cashfree Payment Gateway Client ID (required for payment gateway operations)',
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					operationType: ['paymentGateway'],
+				},
+			},
+			description: 'Cashfree Payment Gateway Client Secret (required for payment gateway operations)',
+		},
+		{
+			displayName: 'API Version',
+			name: 'apiVersion',
+			type: 'string',
+			default: '2023-08-01',
+			required: false,
+			displayOptions: {
+				show: {
+					operationType: ['paymentGateway'],
+				},
+			},
+			description: 'API Version for Payment Gateway operations',
+		},
+		{
+			displayName: 'Payout Authorization Token',
+			name: 'payoutAuthToken',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					operationType: ['payout'],
+				},
+			},
+			description: 'Authorization token for Cashfree Payout API (required for Cashgram operations)',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
 			headers: {
-				'X-Client-Id': '={{$credentials.clientId}}',
-				'X-Client-Secret': '={{$credentials.clientSecret}}',
-				'x-api-version': '={{$credentials.apiVersion || "2023-08-01"}}',
+				'X-Client-Id': '={{$credentials.operationType === "payout" ? "" : $credentials.clientId}}',
+				'X-Client-Secret': '={{$credentials.operationType === "payout" ? "" : $credentials.clientSecret}}',
+				'x-api-version': '={{$credentials.operationType === "payout" ? "" : ($credentials.apiVersion || "2023-08-01")}}',
+				'Authorization': '={{$credentials.operationType === "paymentGateway" ? "" : ("Bearer " + $credentials.payoutAuthToken)}}',
 			},
 		},
 	};
@@ -90,7 +131,7 @@ export class CashfreeApi implements ICredentialType {
 			headers: {
 				'X-Client-Id': '={{$credentials.clientId}}',
 				'X-Client-Secret': '={{$credentials.clientSecret}}',
-				'x-api-version': '2023-08-01',
+				'x-api-version': '={{$credentials.apiVersion || "2025-01-01"}}',
 			},
 		},
 	};
