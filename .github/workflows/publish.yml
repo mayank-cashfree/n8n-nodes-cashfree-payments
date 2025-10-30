@@ -46,6 +46,8 @@ jobs:
                   name: dist
                   path: |
                       dist/
+                      credentials/
+                      nodes/
                       package.json
                       README.md
                       LICENSE.md
