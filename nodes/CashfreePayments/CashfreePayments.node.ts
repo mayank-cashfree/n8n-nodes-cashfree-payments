@@ -5,8 +5,106 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+import * as crypto from 'crypto';
 
 export class CashfreePayments implements INodeType {
+	// Helper method to generate encrypted signature
+	private static generateEncryptedSignature(clientIdWithTimestamp: string, publicKeyContent: string): string {
+		try {
+			// Clean the public key content exactly like Java - remove headers, footers, and ALL whitespace
+			const cleanedPublicKey = publicKeyContent
+				.replace(/-----BEGIN PUBLIC KEY-----/g, '')
+				.replace(/-----END PUBLIC KEY-----/g, '')
+				.replace(/\s+/g, '');
+
+			// Create public key from base64 decoded bytes (matches Java's X509EncodedKeySpec)
+			const publicKey = crypto.createPublicKey({
+				key: Buffer.from(cleanedPublicKey, 'base64'),
+				format: 'der',
+				type: 'spki',
+			});
+
+			// Use OAEP with SHA-1 padding (matches Java's "RSA/ECB/OAEPWithSHA-1AndMGF1Padding")
+			const encryptedData = crypto.publicEncrypt(
+				{
+					key: publicKey,
+					padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+					oaepHash: 'sha1',
+				},
+				Buffer.from(clientIdWithTimestamp, 'utf8')
+			);
+
+			return encryptedData.toString('base64');
+		} catch (error) {
+			throw new Error(`Failed to generate signature: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+
+	// Helper method to create client ID with timestamp
+	private static createClientIdWithTimestamp(clientId: string): string {
+		const epochTimestamp = Math.floor(Date.now() / 1000);
+		return `${clientId}.${epochTimestamp}`;
+	}
+
+	// Helper method to get payout base URL
+	private static getPayoutBaseUrl(environment: string): string {
+		return environment === 'sandbox'
+			? 'https://payout-gamma.cashfree.com'
+			: 'https://payout-api.cashfree.com';
+	}
+
+	// Helper method to get authorization token for payout operations
+	private static async getPayoutAuthToken(clientId: string, clientSecret: string, publicKey: string, environment: string): Promise<string> {
+		try {
+			// Validate inputs
+			if (!clientId || clientId.trim() === '') {
+				throw new Error('Payout Client ID is empty or missing');
+			}
+			if (!clientSecret || clientSecret.trim() === '') {
+				throw new Error('Payout Client Secret is empty or missing');
+			}
+			if (!publicKey || publicKey.trim() === '') {
+				throw new Error('Payout Public Key is empty or missing');
+			}
+
+			const clientIdWithTimestamp = CashfreePayments.createClientIdWithTimestamp(clientId);
+			const signature = CashfreePayments.generateEncryptedSignature(clientIdWithTimestamp, publicKey);
+
+			const baseUrl = CashfreePayments.getPayoutBaseUrl(environment);
+
+			const response = await fetch(`${baseUrl}/payout/v1/authorize`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'X-Client-Id': clientId.trim(),
+					'X-Client-Secret': clientSecret.trim(),
+					'X-Cf-Signature': signature,
+				},
+			});
+
+			if (!response.ok) {
+				const errorData = await response.text();
+				throw new Error(`Authorization failed: ${response.status} - ${errorData}`);
+			}
+
+			const authData: any = await response.json();
+
+			// Extract token from SUCCESS response
+			if (authData.status === 'SUCCESS' && authData.data && authData.data.token) {
+				return authData.data.token;
+			}
+
+			// Handle error responses
+			if (authData.status === 'ERROR') {
+				throw new Error(`Cashfree API Error: ${authData.message} (${authData.subCode})`);
+			}
+
+			throw new Error(`No valid token found in authorization response: ${JSON.stringify(authData)}`);
+		} catch (error) {
+			throw new Error(`Failed to get authorization token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		}
+	}
+
 	description: INodeTypeDescription = {
 		displayName: 'Cashfree Payments',
 		name: 'cashfreePayments',
@@ -361,6 +459,55 @@ export class CashfreePayments implements INodeType {
 				default: '',
 				required: true,
 			},
+			{
+				displayName: 'Link Expiry',
+				name: 'cashgram_link_expiry',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['createCashgram'],
+					},
+				},
+				default: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+				required: false,
+				description: 'Expiry date for the Cashgram link (YYYY-MM-DD format). Maximum 30 days from date of creation.',
+			},
+			{
+				displayName: 'Remarks',
+				name: 'cashgram_remarks',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['createCashgram'],
+					},
+				},
+				default: 'Cashgram payout',
+				required: false,
+				description: 'Additional remarks for the Cashgram',
+			},
+			{
+				displayName: 'Notify Customer',
+				name: 'cashgram_notify_customer',
+				type: 'options',
+				options: [
+					{
+						name: 'Yes',
+						value: 1,
+					},
+					{
+						name: 'No',
+						value: 0,
+					},
+				],
+				displayOptions: {
+					show: {
+						operation: ['createCashgram'],
+					},
+				},
+				default: 1,
+				required: false,
+				description: 'Whether to notify the customer about the Cashgram (1 = Yes, 0 = No)',
+			},
 
 			// Deactivate Cashgram properties
 			{
@@ -384,19 +531,14 @@ export class CashfreePayments implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const credentials = await this.getCredentials('cashfreeApi');
 
-		const baseUrl =
-			credentials.environment === 'sandbox'
-				? 'https://sandbox.cashfree.com/pg'
-				: 'https://api.cashfree.com/pg';
-
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const operation = this.getNodeParameter('operation', i) as string;
 
 				// Validate credentials based on operation type
-				if (operation === 'createCashgram') {
-					if (!credentials.payoutAuthToken) {
-						throw new Error('Payout Authorization Token is required for Cashgram operations. Please configure it in the credentials.');
+				if (operation === 'createCashgram' || operation === 'deactivateCashgram') {
+					if (!credentials.payoutClientId || !credentials.payoutClientSecret || !credentials.payoutPublicKey) {
+						throw new Error('Payout Client ID, Client Secret, and Public Key are required for Cashgram operations. Please configure them in the credentials.');
 					}
 				} else {
 					// For all other operations (Payment Gateway), require Client ID and Secret
@@ -429,11 +571,85 @@ export class CashfreePayments implements INodeType {
 					// Implementation will be added here
 					responseData = { message: 'Get All Refunds for Order operation - TypeScript implementation needed' };
 				} else if (operation === 'createCashgram') {
-					// Implementation will be added here
-					responseData = { message: 'Create Cashgram operation - TypeScript implementation needed' };
+					// Get payout authorization token
+					const authToken = await CashfreePayments.getPayoutAuthToken(
+						String(credentials.payoutClientId).trim(),
+						String(credentials.payoutClientSecret).trim(),
+						credentials.payoutPublicKey as string,
+						credentials.environment as string
+					);
+
+					const cashgramData = {
+						cashgramId: this.getNodeParameter('cashgram_id', i) as string,
+						amount: this.getNodeParameter('cashgram_amount', i) as number,
+						name: this.getNodeParameter('cashgram_name', i) as string,
+						email: this.getNodeParameter('cashgram_email', i) as string,
+						phone: this.getNodeParameter('cashgram_phone', i) as string,
+						linkExpiry: this.getNodeParameter('cashgram_link_expiry', i) as string,
+						remarks: this.getNodeParameter('cashgram_remarks', i) as string,
+						notifyCustomer: this.getNodeParameter('cashgram_notify_customer', i) as number,
+					};
+
+					const payoutBaseUrl = CashfreePayments.getPayoutBaseUrl(credentials.environment as string);
+
+					const response = await fetch(`${payoutBaseUrl}/payout/v1/createCashgram`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'Authorization': `Bearer ${authToken}`,
+						},
+						body: JSON.stringify({
+							cashgramId: cashgramData.cashgramId,
+							amount: cashgramData.amount,
+							name: cashgramData.name,
+							email: cashgramData.email,
+							phone: cashgramData.phone,
+							linkExpiry: cashgramData.linkExpiry,
+							remarks: cashgramData.remarks,
+							notifyCustomer: cashgramData.notifyCustomer
+						}),
+					});
+
+					if (!response.ok) {
+						const errorData = await response.text();
+						throw new NodeApiError(this.getNode(), {
+							message: `Cashgram creation failed: ${response.status} - ${errorData}`,
+						});
+					}
+
+					responseData = await response.json();
 				} else if (operation === 'deactivateCashgram') {
-					// Implementation will be added here
-					responseData = { message: 'Deactivate Cashgram operation - TypeScript implementation needed' };
+					// Get payout authorization token
+					const authToken = await CashfreePayments.getPayoutAuthToken(
+						credentials.payoutClientId as string,
+						credentials.payoutClientSecret as string,
+						credentials.payoutPublicKey as string,
+						credentials.environment as string
+					);
+
+					const cashgramId = this.getNodeParameter('deactivate_cashgram_id', i) as string;
+
+					const payoutBaseUrl = CashfreePayments.getPayoutBaseUrl(credentials.environment as string);
+
+					const response = await fetch(`${payoutBaseUrl}/payout/v1/deactivateCashgram`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							'Authorization': `Bearer ${authToken}`,
+						},
+						body: JSON.stringify({
+							cashgramId: cashgramId,
+						}),
+					});
+
+					if (!response.ok) {
+						const errorData = await response.text();
+						throw new NodeApiError(this.getNode(), {
+							message: `Cashgram deactivation failed: ${response.status} - ${errorData}`,
+						});
+					}
+
+					responseData = await response.json();
 				} else {
 					throw new NodeApiError(this.getNode(), {
 						message: `Unknown operation: ${operation}`,

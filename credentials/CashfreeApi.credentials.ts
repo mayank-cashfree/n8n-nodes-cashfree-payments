@@ -94,8 +94,21 @@ export class CashfreeApi implements ICredentialType {
 			description: 'API Version for Payment Gateway operations',
 		},
 		{
-			displayName: 'Payout Authorization Token',
-			name: 'payoutAuthToken',
+			displayName: 'Payout Client ID',
+			name: 'payoutClientId',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					operationType: ['payout'],
+				},
+			},
+			description: 'Client ID for Cashfree Payout API (required for Cashgram operations)',
+		},
+		{
+			displayName: 'Payout Client Secret',
+			name: 'payoutClientSecret',
 			type: 'string',
 			typeOptions: {
 				password: true,
@@ -107,7 +120,23 @@ export class CashfreeApi implements ICredentialType {
 					operationType: ['payout'],
 				},
 			},
-			description: 'Authorization token for Cashfree Payout API (required for Cashgram operations)',
+			description: 'Client Secret for Cashfree Payout API (required for Cashgram operations)',
+		},
+		{
+			displayName: 'Payout Public Key',
+			name: 'payoutPublicKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					operationType: ['payout'],
+				},
+			},
+			description: 'Public Key for Cashfree Payout API (required for Cashgram operations). Include the full key with headers.',
 		},
 	];
 
@@ -118,7 +147,6 @@ export class CashfreeApi implements ICredentialType {
 				'X-Client-Id': '={{$credentials.operationType === "payout" ? "" : $credentials.clientId}}',
 				'X-Client-Secret': '={{$credentials.operationType === "payout" ? "" : $credentials.clientSecret}}',
 				'x-api-version': '={{$credentials.operationType === "payout" ? "" : ($credentials.apiVersion || "2023-08-01")}}',
-				'Authorization': '={{$credentials.operationType === "paymentGateway" ? "" : ("Bearer " + $credentials.payoutAuthToken)}}',
 			},
 		},
 	};
@@ -126,12 +154,12 @@ export class CashfreeApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.environment === "production" ? "https://api.cashfree.com" : "https://sandbox.cashfree.com"}}',
-			url: '/pg/orders?limit=1',
+			url: '={{$credentials.operationType === "payout" ? "/payout/v1/self" : "/pg/orders?limit=1"}}',
 			method: 'GET',
 			headers: {
-				'X-Client-Id': '={{$credentials.clientId}}',
-				'X-Client-Secret': '={{$credentials.clientSecret}}',
-				'x-api-version': '={{$credentials.apiVersion || "2025-01-01"}}',
+				'X-Client-Id': '={{$credentials.operationType === "payout" ? "" : $credentials.clientId}}',
+				'X-Client-Secret': '={{$credentials.operationType === "payout" ? "" : $credentials.clientSecret}}',
+				'x-api-version': '={{$credentials.operationType === "payout" ? "" : ($credentials.apiVersion || "2023-08-01")}}',
 			},
 		},
 	};
