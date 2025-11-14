@@ -59,7 +59,8 @@ Get your credentials from the [Cashfree Dashboard](https://merchant.cashfree.com
 
 ## Resources
 
-- [Cashfree API Documentation](https://docs.cashfree.com/reference)
+- [Cashfree API Documentation](https://docs.cashfree.com/api-reference/)
+- [n8n Documentation](https://docs.n8n.io/)
 - [n8n Community Nodes Guide](https://docs.n8n.io/integrations/community-nodes/)
 - [Cashfree Dashboard](https://merchant.cashfree.com/)
 
