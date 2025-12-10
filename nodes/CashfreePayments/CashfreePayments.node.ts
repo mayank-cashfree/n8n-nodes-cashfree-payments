@@ -1280,7 +1280,7 @@ export class CashfreePayments implements INodeType {
                         headers['x-idempotency-key'] = idempotencyKey;
                     }
 
-                    const response = await this.helpers.request({
+                    const response = await this.helpers.httpRequest({
                         method: 'POST',
                         url: `${baseUrl}/orders`,
                         headers,
@@ -1344,7 +1344,7 @@ export class CashfreePayments implements INodeType {
                         headers['x-idempotency-key'] = paymentLinkIdempotencyKey;
                     }
 
-                    const response = await this.helpers.request({
+                    const response = await this.helpers.httpRequest({
                         method: 'POST',
                         url: `${baseUrl}/links`,
                         headers,
@@ -1368,7 +1368,7 @@ export class CashfreePayments implements INodeType {
                     if (requestId) headers['x-request-id'] = requestId;
                     if (idempotencyKey) headers['x-idempotency-key'] = idempotencyKey;
 
-                    const response = await this.helpers.request({
+                    const response = await this.helpers.httpRequest({
                         method: 'POST',
                         url: `${baseUrl}/links/${linkId}/cancel`,
                         headers,
@@ -1391,7 +1391,7 @@ export class CashfreePayments implements INodeType {
                     if (requestId) headers['x-request-id'] = requestId;
                     if (idempotencyKey) headers['x-idempotency-key'] = idempotencyKey;
 
-                    const response = await this.helpers.request({
+                    const response = await this.helpers.httpRequest({
                         method: 'GET',
                         url: `${baseUrl}/links/${linkId}`,
                         headers,
@@ -1414,7 +1414,7 @@ export class CashfreePayments implements INodeType {
                     if (requestId) headers['x-request-id'] = requestId;
                     if (idempotencyKey) headers['x-idempotency-key'] = idempotencyKey;
 
-                    const response = await this.helpers.request({
+                    const response = await this.helpers.httpRequest({
                         method: 'GET',
                         url: `${baseUrl}/links/${linkId}/orders?status=${status}`,
                         headers,
@@ -1448,7 +1448,7 @@ export class CashfreePayments implements INodeType {
                     if (xRequestId) headers['x-request-id'] = xRequestId;
                     if (xIdempotencyKey) headers['x-idempotency-key'] = xIdempotencyKey;
 
-                    const response = await this.helpers.request({
+                    const response = await this.helpers.httpRequest({
                         method: 'POST',
                         url: `${baseUrl}/orders/${orderId}/refunds`,
                         headers,
@@ -1471,7 +1471,7 @@ export class CashfreePayments implements INodeType {
                     if (requestId) headers['x-request-id'] = requestId;
                     if (idempotencyKey) headers['x-idempotency-key'] = idempotencyKey;
 
-                    const response = await this.helpers.request({
+                    const response = await this.helpers.httpRequest({
                         method: 'GET',
                         url: `${baseUrl}/orders/${orderId}/refunds`,
                         headers,
