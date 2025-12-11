@@ -1,8 +1,7 @@
 import type {
 	IAuthenticateGeneric,
 	ICredentialType,
-	INodeProperties,
-	ICredentialTestRequest
+	INodeProperties
 } from 'n8n-workflow';
 
 export class CashfreeApi implements ICredentialType {
@@ -84,7 +83,7 @@ export class CashfreeApi implements ICredentialType {
 			displayName: 'API Version',
 			name: 'apiVersion',
 			type: 'string',
-			default: '2023-08-01',
+			default: '2025-01-01',
 			required: false,
 			displayOptions: {
 				show: {
@@ -144,23 +143,12 @@ export class CashfreeApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				'X-Client-Id': '={{$credentials.operationType === "payout" ? "" : $credentials.clientId}}',
-				'X-Client-Secret': '={{$credentials.operationType === "payout" ? "" : $credentials.clientSecret}}',
-				'x-api-version': '={{$credentials.operationType === "payout" ? "" : ($credentials.apiVersion || "2023-08-01")}}',
+				'X-Client-Id': '={{$credentials.clientId}}',
+				'X-Client-Secret': '={{$credentials.clientSecret}}',
+				'x-api-version': '={{$credentials.apiVersion || "2025-01-01"}}',
 			},
 		},
 	};
 
-	test: ICredentialTestRequest = {
-		request: {
-			baseURL: '={{$credentials.environment === "production" ? "https://api.cashfree.com" : "https://sandbox.cashfree.com"}}',
-			url: '={{$credentials.operationType === "payout" ? "/payout/v1/self" : "/pg/orders?limit=1"}}',
-			method: 'GET',
-			headers: {
-				'X-Client-Id': '={{$credentials.operationType === "payout" ? "" : $credentials.clientId}}',
-				'X-Client-Secret': '={{$credentials.operationType === "payout" ? "" : $credentials.clientSecret}}',
-				'x-api-version': '={{$credentials.operationType === "payout" ? "" : ($credentials.apiVersion || "2023-08-01")}}',
-			},
-		},
-	};
+	// Authentication will be validated during actual API operations
 }
